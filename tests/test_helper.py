@@ -127,15 +127,3 @@ def test_array_dataframe():
     pd.testing.assert_frame_equal(state_hash_df[["height"]], pd.DataFrame(["height_1", "height_2"], columns=["height"]))
     pd.testing.assert_frame_equal(state_hash_df[["slot"]], pd.DataFrame(["slot_1", "slot_2"], columns=["slot"]))
     pd.testing.assert_frame_equal(state_hash_df[["validation_error"]], pd.DataFrame(["validation_error_1", "validation_error_2"], columns=["validation_error"]))
-
-
-
-
-
-
-
-
-
-
-
-
