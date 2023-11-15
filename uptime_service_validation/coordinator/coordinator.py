@@ -58,7 +58,6 @@ def main():
             return
         else:
             master_df = pd.DataFrame()
-            state_hash_df = pd.DataFrame()
             # Step 2 Create time ranges:
             time_intervals = getTimeBatches(
                 prev_batch_end, cur_batch_end, os.environ["MINI_BATCH_NUMBER"]
@@ -90,6 +89,23 @@ def main():
                 cassandra.close()
 
             # Step 5 checks for forks and writes to the db.
+            state_hash_df = pd.DataFrame(submissions)
+            state_hash_df.columns = [
+                "submitted_at_date",
+                "submitted_at" ,
+                "submitter",
+                "created_at",
+                "block_hash",
+                "remote_addr",
+                "peer_id",
+                "snark_work",
+                "graphql_control_port",
+                "built_with_commit_sha",
+                "state_hash", 
+                "parent",
+                "height",
+                "slot",
+                "validation_error"]
             if not state_hash_df.empty:
                 master_df["state_hash"] = state_hash_df["state_hash"]
                 master_df["blockchain_height"] = state_hash_df["height"]
