@@ -10,6 +10,7 @@ import pandas as pd
 from time import time
 from helper import *
 from aws_keyspaces_client import AWSKeyspacesClient
+from dataclasses import asdict
 
 # Configure logging
 logging.basicConfig(
@@ -89,23 +90,8 @@ def main():
                 cassandra.close()
 
             # Step 5 checks for forks and writes to the db.
-            state_hash_df = pd.DataFrame(submissions)
-            state_hash_df.columns = [
-                "submitted_at_date",
-                "submitted_at" ,
-                "submitter",
-                "created_at",
-                "block_hash",
-                "remote_addr",
-                "peer_id",
-                "snark_work",
-                "graphql_control_port",
-                "built_with_commit_sha",
-                "state_hash", 
-                "parent",
-                "height",
-                "slot",
-                "validation_error"]
+            state_hash_df = pd.DataFrame([asdict(submission) for submission in submissions])
+
             if not state_hash_df.empty:
                 master_df["state_hash"] = state_hash_df["state_hash"]
                 master_df["blockchain_height"] = state_hash_df["height"]

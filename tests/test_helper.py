@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from uptime_service_validation.coordinator.aws_keyspaces_client import Submission
 from uptime_service_validation.coordinator.helper import (
     pullFileNames,
     getTimeBatches,
@@ -62,7 +63,7 @@ def test_get_time_batches():
 
 def test_array_dataframe():
     submissions = [
-        [
+        Submission(
             "submitted_at_date_1",
             "submitted_at_1" ,
             "submitter_1",
@@ -77,8 +78,8 @@ def test_array_dataframe():
             "parent_1",
             "height_1",
             "slot_1",
-            "validation_error_1"],
-        [
+            "validation_error_1"),
+        Submission(
             "submitted_at_date_2",
             "submitted_at_2" ,
             "submitter_2",
@@ -93,25 +94,10 @@ def test_array_dataframe():
             "parent_2",
             "height_2",
             "slot_2",
-            "validation_error_2"]
+            "validation_error_2")
     ]
     state_hash_df = pd.DataFrame(submissions)
-    state_hash_df.columns = [
-            "submitted_at_date",
-            "submitted_at" ,
-            "submitter",
-            "created_at",
-            "block_hash",
-            "remote_addr",
-            "peer_id",
-            "snark_work",
-            "graphql_control_port",
-            "built_with_commit_sha",
-            "state_hash", 
-            "parent",
-            "height",
-            "slot",
-            "validation_error"]
+
     pd.testing.assert_frame_equal(state_hash_df[["submitted_at_date"]], pd.DataFrame(["submitted_at_date_1", "submitted_at_date_2"], columns=["submitted_at_date"]))
     pd.testing.assert_frame_equal(state_hash_df[["submitted_at"]], pd.DataFrame(["submitted_at_1", "submitted_at_2"], columns=["submitted_at"]))
     pd.testing.assert_frame_equal(state_hash_df[["submitter"]], pd.DataFrame(["submitter_1", "submitter_2"], columns=["submitter"]))
