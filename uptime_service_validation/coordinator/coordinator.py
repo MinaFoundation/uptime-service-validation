@@ -91,12 +91,16 @@ def main():
 
             # Step 5 checks for forks and writes to the db.
             state_hash_df = pd.DataFrame([asdict(submission) for submission in submissions])
-
+            all_files_count = state_hash_df.shape[0]
             if not state_hash_df.empty:
                 master_df["state_hash"] = state_hash_df["state_hash"]
                 master_df["blockchain_height"] = state_hash_df["height"]
                 master_df["slot"] = pd.to_numeric(state_hash_df["slot"])
                 master_df["parent_state_hash"] = state_hash_df["parent"]
+                master_df["submitter"] = state_hash_df["submitter"]
+                master_df["file_updated"] = state_hash_df["file_updated"] #this is the date in the file-name.
+                master_df["file_name"] = state_hash_df["file_name"] #where do we get this
+                master_df["blockchain_epoch"] = state_hash_df["blockchain_epoch"] #where do we get this
 
                 state_hash = pd.unique(
                     master_df[["state_hash", "parent_state_hash"]].values.ravel("k")
@@ -118,20 +122,6 @@ def main():
                     node_to_insert["updated_at"] = datetime.now(timezone.utc)
                     createNodeRecord(connection, logging, node_to_insert, 100)
 
-                if "snark_work" in master_df.columns:
-                    master_df.drop("snark_work", axis=1, inplace=True)
-
-                columns_to_drop = [
-                    "remote_addr",
-                    "file_created",
-                    "file_generation",
-                    "file_owner",
-                    "file_crc32c",
-                    "file_md5_hash",
-                ]
-                master_df.drop(
-                    columns=columns_to_drop, axis=1, inplace=True, errors="ignore"
-                )
                 master_df = master_df.rename(
                     columns={
                         "file_updated": "file_timestamps",
