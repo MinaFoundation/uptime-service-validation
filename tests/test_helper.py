@@ -3,7 +3,8 @@ from uptime_service_validation.coordinator.aws_keyspaces_client import Submissio
 from uptime_service_validation.coordinator.helper import (getTimeBatches)
 import pandas as pd
 from uptime_service_validation.coordinator.helper import (filterStateHashPercentage, createGraph, applyWeights, bfs)
-import pandas as pd
+import calendar
+
 
 def test_get_time_batches():
     a = datetime(2023, 11, 6, 15, 35, 47, 630499)
@@ -264,3 +265,9 @@ def test_bfs_hard():
                                 ['state_hash_23', 2]], 
                                 columns=['state_hash','weight'])
     assert set(shortlist['state_hash']) == set(expected['state_hash'])
+
+def test_blockchain_epoch():
+    state_hash_df = pd.DataFrame(['2021-12-21T10:15:30Z', '2021-12-31T10:15:30Z'], columns=['created_at'])   
+    state_hash_df['blockchain_epoch'] = state_hash_df['created_at'].apply(lambda row: int(calendar.timegm(datetime.strptime(row, "%Y-%m-%dT%H:%M:%SZ").timetuple()) * 1000))
+    expected = pd.DataFrame([1640081730000, 1640945730000], columns=['blockchain_epoch'])
+    pd.testing.assert_frame_equal(state_hash_df[['blockchain_epoch']], expected)
