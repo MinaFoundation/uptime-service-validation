@@ -5,7 +5,6 @@ import pandas as pd
 from uptime_service_validation.coordinator.helper import (filterStateHashPercentage, createGraph, applyWeights, bfs)
 import calendar
 
-
 def test_get_time_batches():
     a = datetime(2023, 11, 6, 15, 35, 47, 630499)
     b = a + timedelta(minutes=5)
