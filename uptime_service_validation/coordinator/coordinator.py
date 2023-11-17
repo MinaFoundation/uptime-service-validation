@@ -98,9 +98,10 @@ def main():
                 master_df["slot"] = pd.to_numeric(state_hash_df["slot"])
                 master_df["parent_state_hash"] = state_hash_df["parent"]
                 master_df["submitter"] = state_hash_df["submitter"]
-                master_df["file_updated"] = state_hash_df["file_updated"] #this is the date in the file-name.
-                master_df["file_name"] = state_hash_df["file_name"] #where do we get this
-                master_df["blockchain_epoch"] = state_hash_df["blockchain_epoch"] #where do we get this
+                master_df["file_updated"] = state_hash_df["submitted_at"]
+                master_df["file_name"] = state_hash_df["submitted_at"]+"-"+state_hash_df["submitter"] #Perhaps this should be changed? Filename makes less sense now.
+                master_df["blockchain_epoch"] = state_hash['created_at'].apply(
+                                                lambda row: int(calendar.timegm(datetime.strptime(row, "%Y-%m-%dT%H:%M:%SZ").timetuple()) * 1000))
 
                 state_hash = pd.unique(
                     master_df[["state_hash", "parent_state_hash"]].values.ravel("k")
