@@ -11,6 +11,7 @@ from time import time
 from helper import *
 from aws_keyspaces_client import AWSKeyspacesClient
 from dataclasses import asdict
+import calendar
 
 # Configure logging
 logging.basicConfig(
@@ -100,7 +101,7 @@ def main():
                 master_df["submitter"] = state_hash_df["submitter"]
                 master_df["file_updated"] = state_hash_df["submitted_at"]
                 master_df["file_name"] = state_hash_df["submitted_at"]+"-"+state_hash_df["submitter"] #Perhaps this should be changed? Filename makes less sense now.
-                master_df["blockchain_epoch"] = state_hash['created_at'].apply(
+                master_df["blockchain_epoch"] = state_hash_df['created_at'].apply(
                                                 lambda row: int(calendar.timegm(datetime.strptime(row, "%Y-%m-%dT%H:%M:%SZ").timetuple()) * 1000))
 
                 state_hash = pd.unique(
