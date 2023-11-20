@@ -1,7 +1,6 @@
 import os
 import logging
-from http.server import BaseHTTPRequestHandler, HTTPServer
-from kubernetes import client, config
+from kubernetes import config
 from server import setUpValidatorPods
 from datetime import datetime, timedelta, timezone
 import psycopg2

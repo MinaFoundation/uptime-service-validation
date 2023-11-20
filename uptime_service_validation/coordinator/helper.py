@@ -1,28 +1,11 @@
 import psycopg2
 import psycopg2.extras as extras
-from slack import WebClient
-from slack.errors import SlackApiError
 import matplotlib.pyplot as plt
 from datetime import datetime, timedelta, timezone
 import pandas as pd
 import networkx as nx
-import os
-import boto3
 
 ERROR = "Error: {0}"
-
-
-def getDefinedMinute(interval, offset, start_dateTime):
-    interval_range = list(range(offset, 60, interval))
-    smallest_diff = 60
-    smallest_candidate = 60
-    for candidate in interval_range:
-        diff = start_dateTime.minute - candidate
-        if diff > 0 & diff < smallest_diff:
-            smallest_diff - diff
-            smallest_candidate = candidate
-    return smallest_candidate
-
 
 def getTimeBatches(start_time, end_time, range_number):
     diff = (end_time - start_time) / range_number
@@ -31,89 +14,6 @@ def getTimeBatches(start_time, end_time, range_number):
     for i in range(range_number):
         time_intervals.append((start_time + diff * i, start_time + diff * (i + 1)))
     return time_intervals
-
-
-def createRegister(conn, start_date, end_date, logger):
-    try:
-        cursor = conn.cursor()
-        cursor.execute(
-            f"""INSERT INTO register(start_date, end_date)
-                VALUES ({start_date}, {end_date});"""
-        )
-    except (Exception, psycopg2.DatabaseError) as error:
-        logger.error(ERROR.format(error))
-        return -1
-    finally:
-        cursor.close()
-
-
-def checkPreviousRegister(conn, start_date, logger):
-    try:
-        cursor = conn.cursor()
-        cursor.execute(
-            f"""SELECT done
-                FROM register
-                WHERE end_date = {start_date};"""
-        )
-        return cursor.fetchone()[0]
-    except (Exception, psycopg2.DatabaseError) as error:
-        logger.error(ERROR.format(error))
-        return -1
-    finally:
-        cursor.close()
-
-
-def updateRegister(conn, start_date, logger):
-    try:
-        cursor = conn.cursor()
-        cursor.execute(
-            f"""UPDATE register(
-                set done = TRUE,
-                WHERE start_date = {start_date};"""
-        )
-    except (Exception, psycopg2.DatabaseError) as error:
-        logger.error(ERROR.format(error))
-        return -1
-    finally:
-        cursor.close()
-
-
-def createSlackPost(token, channel, message):
-    client = WebClient(token=token)
-    try:
-        response = client.chat_postMessage(channel=channel, text=message)
-    except SlackApiError as e:
-        # You will get a SlackApiError if "ok" is False
-        assert e.response["error"]  # str like 'invalid_auth', 'channel_not_found'
-
-
-def pullFileNames(start_dateTime, end_dateTime, bucket_name, test=False):
-    script_offset = os.path.commonprefix(
-        [
-            str(start_dateTime.strftime("%Y-%m-%dT%H:%M:%SZ")),
-            str(end_dateTime.strftime("%Y-%m-%dT%H:%M:%SZ")),
-        ]
-    )
-    prefix_date = start_dateTime.strftime("%Y-%m-%d")
-    prefix = None
-    if test:
-        prefix = "sandbox/submissions/" + prefix_date + "/" + script_offset
-    else:
-        prefix = "submissions/" + prefix_date + "/" + script_offset
-    s3 = boto3.resource("s3")
-    s3_bucket = s3.Bucket(bucket_name)
-    return [
-        f.key
-        for f in s3_bucket.objects.filter(Prefix=prefix).all()
-        if blobChecker(start_dateTime, end_dateTime, f)
-    ]
-
-
-def blobChecker(start_date, end_date, blob):
-    file_timestamp = blob.key.split("/")[3].rsplit("-", 1)[0]
-    file_epoch = datetime.strptime(file_timestamp, "%Y-%m-%dT%H:%M:%SZ").timestamp()
-    return file_epoch < end_date.timestamp() and (file_epoch >= start_date.timestamp())
-
 
 def getBatchTimings(conn, logger, interval):
     try:
@@ -133,7 +33,6 @@ def getBatchTimings(conn, logger, interval):
     finally:
         cursor.close()
     return prev_batch_end, cur_batch_end, bot_log_id
-
 
 def getPreviousStatehash(conn, logger, bot_log_id):
     cursor = conn.cursor()
@@ -155,14 +54,12 @@ def getPreviousStatehash(conn, logger, bot_log_id):
         cursor.close()
     return previous_result_df, p_selected_node_df
 
-
 def getRelationList(df):
     relation_list = []
     for child, parent in df[["state_hash", "parent_state_hash"]].values:
         if parent in df["state_hash"].values:
             relation_list.append((parent, child))
     return relation_list
-
 
 def getStatehashDF(conn, logger):
     cursor = conn.cursor()
@@ -177,7 +74,6 @@ def getStatehashDF(conn, logger):
         cursor.close()
     return state_hash
 
-
 def findNewValuesToInsert(existing_values, new_values):
     return (
         existing_values.merge(new_values, how="outer", indicator=True)
@@ -185,7 +81,6 @@ def findNewValuesToInsert(existing_values, new_values):
         .drop("_merge", 1)
         .drop_duplicates()
     )
-
 
 def createStatehash(conn, logger, statehash_df, page_size=100):
     tuples = [tuple(x) for x in statehash_df.to_numpy()]
@@ -205,7 +100,6 @@ def createStatehash(conn, logger, statehash_df, page_size=100):
     logger.info("create_statehash  end ")
     return 0
 
-
 def createNodeRecord(conn, logger, df, page_size=100):
     tuples = [tuple(x) for x in df.to_numpy()]
     query = """INSERT INTO nodes ( block_producer_key, updated_at) 
@@ -222,7 +116,6 @@ def createNodeRecord(conn, logger, df, page_size=100):
     logger.info("create_point_record  end ")
     return 0
 
-
 def filterStateHashPercentage(df, p=0.34):
     state_hash_list = (
         df["state_hash"].value_counts().sort_values(ascending=False).index.to_list()
@@ -237,7 +130,6 @@ def filterStateHashPercentage(df, p=0.34):
         if blk_count >= percentage_result:
             good_state_hash_list.append(s)
     return good_state_hash_list
-
 
 def createGraph(batch_df, p_selected_node_df, c_selected_node, p_map):
     batch_graph = nx.DiGraph()
@@ -272,7 +164,6 @@ def createGraph(batch_df, p_selected_node_df, c_selected_node, p_map):
 
     return batch_graph
 
-
 def applyWeights(batch_graph, c_selected_node, p_selected_node):
     for node in list(batch_graph.nodes()):
         if node in c_selected_node:
@@ -285,7 +176,6 @@ def applyWeights(batch_graph, c_selected_node, p_selected_node):
             batch_graph.nodes[node]["weight"] = 9999
 
     return batch_graph
-
 
 def plotGraph(batch_graph, g_pos, title):
     # plot the graph
@@ -310,14 +200,12 @@ def plotGraph(batch_graph, g_pos, title):
     plt.show()  # pause before exiting
     return g_pos
 
-
 def getMinimumWeight(graph, child_node):
     child_node_weight = graph.nodes[child_node]["weight"]
     for parent in list(graph.predecessors(child_node)):
         lower = min(graph.nodes[parent]["weight"] + 1, child_node_weight)
         child_node_weight = lower
     return child_node_weight
-
 
 def bfs(graph, queue_list, node, max_depth=2):
     visited = list()
@@ -346,7 +234,6 @@ def bfs(graph, queue_list, node, max_depth=2):
     shortlisted_state_hash_df["weight"] = hash_weights
     return shortlisted_state_hash_df
 
-
 def createBotLog(conn, logger, values):
     query = """INSERT INTO bot_logs(files_processed, file_timestamps, batch_start_epoch, batch_end_epoch, 
                 processing_time)  values ( %s, %s, %s, %s, %s) RETURNING id """
@@ -362,7 +249,6 @@ def createBotLog(conn, logger, values):
         cursor.close()
     logger.info("create_bot_log  end ")
     return result[0]
-
 
 def insertStatehashResults(conn, logger, df, page_size=100):
     temp_df = df[["parent_state_hash", "state_hash", "weight", "bot_log_id"]]
@@ -382,7 +268,6 @@ def insertStatehashResults(conn, logger, df, page_size=100):
     logger.info("create_bot_logs_statehash  end ")
     return 0
 
-
 def createPointRecord(conn, logger, df, page_size=100):
     tuples = [tuple(x) for x in df.to_numpy()]
     query = """INSERT INTO points (file_name, file_timestamps, blockchain_epoch, node_id, blockchain_height,
@@ -400,7 +285,6 @@ def createPointRecord(conn, logger, df, page_size=100):
         cursor.close()
     logger.info("create_point_record  end ")
     return 0
-
 
 def updateScoreboard(conn, logger, score_till_time, uptime_days=30):
     sql = """with vars  (snapshot_date, start_date) as( values (%s AT TIME ZONE 'UTC', 
@@ -449,7 +333,6 @@ def updateScoreboard(conn, logger, score_till_time, uptime_days=30):
     finally:
         cursor.close()
     return 0
-
 
 def getExistingNodes(conn, logger):
     cursor = conn.cursor()
