@@ -226,7 +226,6 @@ def main():
             else:
                 logging.info("Finished processing data from table.")
             try:
-                # The following needs to change.
                 updateScoreboard(
                     connection, cur_batch_end, int(os.environ["UPTIME_DAYS_FOR_SCORE"])
                 )
