@@ -1,5 +1,5 @@
 --Need to check on this structure. Feels like some of these should be non-null.
-DROP TABLE IF EXISTS bot_logs;
+DROP TABLE IF EXISTS bot_logs CASCADE;
 CREATE TABLE bot_logs (
 	id SERIAL PRIMARY KEY, 
 	processing_time DOUBLE PRECISION, 
@@ -9,14 +9,14 @@ CREATE TABLE bot_logs (
 	batch_end_epoch BIGINT
 );
 
-DROP TABLE IF EXISTS statehash;
+DROP TABLE IF EXISTS statehash CASCADE;
 CREATE TABLE statehash (
 	id SERIAL PRIMARY KEY,
 	value TEXT
 );
 CREATE UNIQUE INDEX uq_state_hash ON statehash USING btree (value);
 
-DROP TABLE IF EXISTS botlogs_statehash;
+DROP TABLE IF EXISTS botlogs_statehash CASCADE;
 CREATE TABLE botlogs_statehash (
 	id SERIAL PRIMARY KEY,
 	parent_statehash_id INT, 
@@ -34,7 +34,7 @@ CREATE TABLE botlogs_statehash (
 		REFERENCES bot_logs(id)
 );
 
-DROP TABLE IF EXISTS nodes;
+DROP TABLE IF EXISTS nodes CASCADE;
 CREATE TABLE nodes (
 	id SERIAL PRIMARY KEY,
 	block_producer_key TEXT,
@@ -46,7 +46,7 @@ CREATE TABLE nodes (
 	application_status BOOLEAN
 );
 
-DROP TABLE IF EXISTS points;
+DROP TABLE IF EXISTS points CASCADE;
 CREATE TABLE points (
 	id SERIAL PRIMARY KEY,
 	file_name TEXT,
@@ -70,7 +70,7 @@ CREATE TABLE points (
 );
 
 --Should some of these values be nullable? If uptime file doesn't pass validation, say?
-DROP TABLE IF EXISTS uptime_file_history;
+DROP TABLE IF EXISTS uptime_file_history CASCADE;
 CREATE TABLE uptime_file_history (
 	id SERIAL PRIMARY KEY,
 	file_name TEXT, 
@@ -98,7 +98,7 @@ CREATE TABLE uptime_file_history (
 );
 CREATE INDEX idx_ufh_node_id ON uptime_file_history USING btree (node_id);
 
-DROP TABLE IF EXISTS score_history;
+DROP TABLE IF EXISTS score_history CASCADE;
 CREATE TABLE score_history (
 	id SERIAL PRIMARY KEY,
 	node_id INT,
