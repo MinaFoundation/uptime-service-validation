@@ -43,7 +43,7 @@ CREATE TABLE nodes (
 	score_percent NUMERIC(6,2),
 	discord_id TEXT,
 	email_id TEXT,
-	application_status BOOLEAN,
+	application_status BOOLEAN
 );
 
 DROP TABLE IF EXISTS points;
@@ -57,7 +57,7 @@ CREATE TABLE points (
 	created_at TIMESTAMPTZ(6),
 	node_id INT,
 	bot_log_id INT,
-	statehash_id INT
+	statehash_id INT,
 	CONSTRAINT fk_nodes
 		FOREIGN KEY(node_id) 
 		REFERENCES nodes(id),
