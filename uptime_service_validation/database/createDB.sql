@@ -78,7 +78,7 @@ CREATE TABLE uptime_file_history (
 	receivedfrom TEXT, 
 	node_id INT NOT NULL, 
 	block_statehash INT,
-    parent_block_statehash INT 
+    parent_block_statehash INT, 
 	nodedata_blockheight BIGINT, 
 	nodedata_slot BIGINT, 
 	file_modified_at TIMESTAMP(6), 
