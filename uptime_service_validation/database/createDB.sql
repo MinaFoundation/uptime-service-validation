@@ -90,10 +90,10 @@ CREATE TABLE uptime_file_history (
 		FOREIGN KEY(node_id) 
 		REFERENCES nodes(id),
 	CONSTRAINT fk_parent_statehash
-		FOREIGN KEY(parent_statehash_id) 
+		FOREIGN KEY(parent_block_statehash) 
 		REFERENCES statehash(id),
 	CONSTRAINT fk_statehash
-		FOREIGN KEY(statehash_id) 
+		FOREIGN KEY(block_statehash) 
 		REFERENCES statehash(id)
 );
 CREATE INDEX idx_ufh_node_id ON uptime_file_history USING btree (node_id);
