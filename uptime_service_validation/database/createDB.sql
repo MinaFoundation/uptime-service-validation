@@ -69,35 +69,6 @@ CREATE TABLE points (
 		REFERENCES statehash(id)
 );
 
---Should some of these values be nullable? If uptime file doesn't pass validation, say?
-DROP TABLE IF EXISTS uptime_file_history CASCADE;
-CREATE TABLE uptime_file_history (
-	id SERIAL PRIMARY KEY,
-	file_name TEXT, 
-	receivedat BIGINT,
-	receivedfrom TEXT, 
-	node_id INT NOT NULL, 
-	block_statehash INT,
-    parent_block_statehash INT, 
-	nodedata_blockheight BIGINT, 
-	nodedata_slot BIGINT, 
-	file_modified_at TIMESTAMP(6), 
-	file_created_at TIMESTAMP(6), 
-	file_generation BIGINT,
-    file_crc32c TEXT, 
-	file_md5_hash TEXT,
-	CONSTRAINT fk_nodes
-		FOREIGN KEY(node_id) 
-		REFERENCES nodes(id),
-	CONSTRAINT fk_parent_statehash
-		FOREIGN KEY(parent_block_statehash) 
-		REFERENCES statehash(id),
-	CONSTRAINT fk_statehash
-		FOREIGN KEY(block_statehash) 
-		REFERENCES statehash(id)
-);
-CREATE INDEX idx_ufh_node_id ON uptime_file_history USING btree (node_id);
-
 DROP TABLE IF EXISTS score_history CASCADE;
 CREATE TABLE score_history (
 	id SERIAL PRIMARY KEY,
