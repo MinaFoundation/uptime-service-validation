@@ -102,9 +102,9 @@ def main():
             )
 
             webhookURL = os.environ["WEBHOOK_URL"]
-            if (end - start < float(os.environ["ALARM_LOWER_LIMIT"])): 
+            if (end - start < float(os.environ["ALARM_ZK_LOWER_LIMIT_SEC"])): 
                 sendSlackMessage(webhookURL, f'ZkApp Validation took {end- start} seconds, which is too quick', logging)
-            if (end - start > float(os.environ["ALARM_UPPER_LIMIT"])): 
+            if (end - start > float(os.environ["ALARM_ZK_UPPER_LIMIT_SEC"])): 
                 sendSlackMessage(webhookURL, f'ZkApp Validation took {end- start} seseconds, which is too long', logging)
 
             submissions = []
