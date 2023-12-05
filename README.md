@@ -61,6 +61,14 @@ The Coordinator program runs the `stateless-verification-tool` for validation ag
 - `WORKER_IMAGE` - Docker image name for the stateless verifier (e.g., `mina-delegation-verify`).
 - `WORKER_TAG` - Specific tag of the Docker image, indicating the version or build.
 
+### Slack Alerts
+
+The following environment variables are involved in sending Slack Alerts using Webhooks whenever the ZkValidator process is too quick or slow:
+
+- `WEBHOOK_URL`
+- `ALARM_ZK_LOWER_LIMIT_SEC`
+- `ALARM_ZK_UPPER_LIMIT_SEC`
+
 ### Postgres Configuration
 
 Set these environment variables for the Postgres connection:
