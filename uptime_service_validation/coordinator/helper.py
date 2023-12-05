@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from datetime import datetime, timedelta, timezone
 import pandas as pd
 import networkx as nx
-
+import requests
 
 ERROR = "Error: {0}"
 
@@ -367,3 +367,9 @@ def getExistingNodes(conn, logger):
     finally:
         cursor.close()
     return nodes
+
+
+def sendSlackMessage(url, message, logger):
+    payload='{"text": "%s" }' % message
+    response = requests.post(url, data=payload)
+    logger(response)
