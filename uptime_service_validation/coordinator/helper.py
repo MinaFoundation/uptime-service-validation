@@ -373,3 +373,4 @@ def sendSlackMessage(url, message, logger):
     payload='{"text": "%s" }' % message
     response = requests.post(url, data=payload)
     logger(response)
+    

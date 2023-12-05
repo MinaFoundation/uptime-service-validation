@@ -102,8 +102,10 @@ def main():
             )
 
             webhookURL = os.environ["WEBHOOK_URL"]
-            if (end - start < float(os.environ["ALARM_LOWER_LIMIT"])): sendSlackMessage(webhookURL, f'ZkApp Validation took {end- start} seconds, which is too quick', logging)
-            if (end - start > float(os.environ["ALARM_UPPER_LIMIT"])): sendSlackMessage(webhookURL, f'ZkApp Validation took {end- start} seseconds, which is too long', logging)
+            if (end - start < float(os.environ["ALARM_LOWER_LIMIT"])): 
+                sendSlackMessage(webhookURL, f'ZkApp Validation took {end- start} seconds, which is too quick', logging)
+            if (end - start > float(os.environ["ALARM_UPPER_LIMIT"])): 
+                sendSlackMessage(webhookURL, f'ZkApp Validation took {end- start} seseconds, which is too long', logging)
 
             submissions = []
             cassandra = AWSKeyspacesClient()
