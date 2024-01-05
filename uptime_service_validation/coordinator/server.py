@@ -1,15 +1,10 @@
 import logging
 import sys
-from kubernetes import client
+from kubernetes import client, config
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 import subprocess
 import time
-
-# Set environment variables
-# Get the values of your-image and tag from environment variables
-worker_image = os.environ.get("WORKER_IMAGE", "busybox")
-worker_tag = os.environ.get("WORKER_TAG", "latest")
 
 
 # Format datetime such as it is accepted by the stateless validator
@@ -17,57 +12,133 @@ def datetime_formatter(dt):
     return dt.strftime("%Y-%m-%d %H:%M:%S.%f")[:-5] + "+0000"
 
 
-def setUpValidatorPods(time_intervals, jobs, logging, worker_image, worker_tag):
-    # Create a Kubernetes API client
+def setUpValidatorPods(time_intervals, logging, worker_image, worker_tag):
+    # Configuring Kubernetes client
+    config.load_incluster_config()
+    # config.load_kube_config()
+
     api = client.BatchV1Api()
+    namespace = (
+        open("/var/run/secrets/kubernetes.io/serviceaccount/namespace").read().strip()
+    )
+
+    # List to keep track of job names
+    jobs = []
+
     for index, mini_batch in enumerate(time_intervals):
-        job_name = f"zk-validator-{datetime.now().strftime('%y-%m-%d-%H-%M')}-{index}"  # ZKValidator
-        jobs.append(job_name)
+        # Define the environment variables
+        env_vars = [
+            client.V1EnvVar(
+                name="CQLSH", value=os.environ.get("CQLSH")
+            ),
+            client.V1EnvVar(
+                name="DELEGATION_VERIFY_AWS_ROLE_ARN", value=os.environ.get("DELEGATION_VERIFY_AWS_ROLE_ARN")
+            ),
+            client.V1EnvVar(
+                name="DELEGATION_VERIFY_AWS_ROLE_SESSION_NAME", value=os.environ.get("DELEGATION_VERIFY_AWS_ROLE_SESSION_NAME")
+            ),
+            client.V1EnvVar(
+                name="CASSANDRA_HOST", value=os.environ.get("CASSANDRA_HOST")
+            ),
+            client.V1EnvVar(
+                name="CASSANDRA_PORT", value=os.environ.get("CASSANDRA_PORT")
+            ),
+            client.V1EnvVar(
+                name="AWS_DEFAULT_REGION", value=os.environ.get("AWS_DEFAULT_REGION")
+            ),
+            client.V1EnvVar(
+                name="SSL_CERTFILE", value="/.cassandra/sf-class2-root.crt"
+            ),
+            client.V1EnvVar(name="CASSANDRA_USE_SSL", value="1"),
+            client.V1EnvVar(
+                name="AUTH_VOLUME_MOUNT_PATH", value=os.environ.get("AUTH_VOLUME_MOUNT_PATH")
+            ),
+        ]
+
+        # Define the volumes
+        auth_volume = client.V1Volume(
+            name = "auth-volume",
+            empty_dir = client.V1EmptyDirVolumeSource(),
+        )
+
+        # Define the volueMounts
+        auth_volume_mount = client.V1VolumeMount(
+            name = "auth-volume",
+            mount_path = os.environ.get("AUTH_VOLUME_MOUNT_PATH"),
+        )
+
+        # Define the container
+
+        container = client.V1Container(
+            name="stateless-verification-tool",
+            image=f"{worker_image}:{worker_tag}",
+            command=["/bin/sh", "-c", "source /var/mina-delegation-verify-auth/.env && /bin/delegation-verify"],
+            args=[
+                "cassandra",
+                "--keyspace",
+                os.environ.get("AWS_KEYSPACE"),
+                datetime_formatter(mini_batch[0]),
+                datetime_formatter(mini_batch[1]),
+                "--no-check",
+            ],
+            env=env_vars,
+            image_pull_policy=os.environ.get("IMAGE_PULL_POLICY", "IfNotPresent"),
+            volume_mounts=[auth_volume_mount],
+        )
+
+        # Define the init container
+
+        init_container = client.V1InitContainer(
+            name="stateless-verification-tool-init",
+            image=f"{worker_image}:{worker_tag}",
+            command=["/bin/authenticate.sh"],
+            env=env_vars,
+            image_pull_policy=os.environ.get("IMAGE_PULL_POLICY", "IfNotPresent"),
+            volume_mounts=[auth_volume_mount],
+        )
+
+        # Job name
+        job_name = f"stateless-verification-tool-{datetime.now(timezone.utc).strftime('%y-%m-%d-%H-%M')}-{index}"
+
+        # Create the job
         job = client.V1Job(
+            api_version="batch/v1",
+            kind="Job",
             metadata=client.V1ObjectMeta(name=job_name),
             spec=client.V1JobSpec(
                 template=client.V1PodTemplateSpec(
                     spec=client.V1PodSpec(
-                        containers=[
-                            client.V1Container(
-                                name="zk-validator",
-                                image=f"{worker_image}:{worker_tag}",
-                                command=["sleep", "10"],
-                                env=[
-                                    client.V1EnvVar(
-                                        name="JobName", value=f"{job_name}"
-                                    ),
-                                    client.V1EnvVar(
-                                        name="BatchStart",
-                                        value=f"{mini_batch[index][0]}",
-                                    ),
-                                    client.V1EnvVar(
-                                        name="BatchEnd", value=f"{mini_batch[index][1]}"
-                                    ),
-                                ],
-                                image_pull_policy="Always",  # Set the image pull policy here
-                            )
-                        ],
-                        restart_policy="Never",
+                        containers=[container, init_container], restart_policy="Never"
                     )
                 )
             ),
         )
-        namespace = open(
-            "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
-        ).read()
-        api.create_namespaced_job(namespace, job)
 
-        logging.info(f"Launching pod {index}")
+        # Create the job in Kubernetes
+        try:
+            api.create_namespaced_job(namespace, job)
+            logging.info(f"Job {job_name} created in namespace {namespace}")
+            jobs.append(job_name)
+        except Exception as e:
+            logging.error(f"Error creating job {job_name}: {e}")
 
-    while True:
-        for job_name in jobs:
-            pod = api.read_namespaced_job(job_name, namespace)
-            if pod.status.succeeded is not None and pod.status.succeeded > 0:
-                logging.info(f"Pod {index} completed at {datetime.now()}")
-                jobs.remove(job_name)
-        if len(jobs) == 0:
-            break
+    # Monitor jobs
+    while jobs:
+        for job_name in list(jobs):
+            try:
+                job_status = api.read_namespaced_job_status(job_name, namespace)
+                if job_status.status.succeeded:
+                    logging.info(f"Job {job_name} succeeded.")
+                    jobs.remove(job_name)
+                elif job_status.status.failed:
+                    logging.error(f"Job {job_name} failed.")
+                    jobs.remove(job_name)
+            except Exception as e:
+                logging.error(f"Error reading job status for {job_name}: {e}")
+
+        time.sleep(10)
+
+    logging.info("All jobs have been processed.")
 
 
 def setUpValidatorProcesses(time_intervals, logging, worker_image, worker_tag):
@@ -186,6 +257,6 @@ if __name__ == "__main__":
     setUpValidatorProcesses(
         time_intervals,
         logging,
-        worker_image,
-        worker_tag,
+        worker_image=os.environ.get("WORKER_IMAGE"),
+        worker_tag=os.environ.get("WORKER_TAG"),
     )

@@ -4,7 +4,6 @@ import logging
 import calendar
 import pandas as pd
 import psycopg2
-from kubernetes import config
 from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 from time import sleep, time
@@ -40,9 +39,6 @@ def main():
         level=logging.INFO,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
-    # Load the in-cluster configuration only if not test environment
-    if not test_env():
-        config.load_incluster_config()
 
     connection = psycopg2.connect(
         host=os.environ["POSTGRES_HOST"],
@@ -91,16 +87,13 @@ def main():
             worker_image = os.environ["WORKER_IMAGE"]
             worker_tag = os.environ["WORKER_TAG"]
             start = time()
-            jobs = []
             if test_env():
                 logging.warning("running in test environment")
                 setUpValidatorProcesses(
                     time_intervals, logging, worker_image, worker_tag
                 )
             else:
-                setUpValidatorPods(
-                    time_intervals, jobs, logging, worker_image, worker_tag
-                )
+                setUpValidatorPods(time_intervals, logging, worker_image, worker_tag)
             end = time()
             # Step 4 We need to read the ZKValidator results from a db.
             logging.info(
