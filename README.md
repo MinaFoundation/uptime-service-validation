@@ -111,8 +111,11 @@ To connect to AWS Keyspaces, the following environment variables need to be set:
 - `AWS_KEYSPACE` - Your AWS Keyspace name.
 - `CASSANDRA_HOST` - Cassandra host (e.g. cassandra.us-west-2.amazonaws.com).
 - `CASSANDRA_PORT` - Cassandra port (e.g. 9142).
-- `AWS_ACCESS_KEY_ID` - Your AWS Access Key ID.
-- `AWS_SECRET_ACCESS_KEY` - Your AWS Secret Access Key.
+- `AWS_WEB_IDENTITY_TOKEN_FILE` - AWS web identity token file.
+- `AWS_ROLE_SESSION_NAME` - AWS role session name.
+- `AWS_ROLE_ARN` - AWS role arn.
+- `AWS_ACCESS_KEY_ID` - Your AWS Access Key ID. No need to set if `AWS_WEB_IDENTITY_TOKEN_FILE`, `AWS_ROLE_SESSION_NAME` and `AWS_ROLE_ARN` are set.
+- `AWS_SECRET_ACCESS_KEY` - Your AWS Secret Access Key. No need to set if `AWS_WEB_IDENTITY_TOKEN_FILE`, `AWS_ROLE_SESSION_NAME` and `AWS_ROLE_ARN` are set.
 - `AWS_DEFAULT_REGION` - Your AWS Default region. (e.g. us-west-2, it is needed for `stateless-verification-tool`)
 - `SSL_CERTFILE` - The path to your SSL certificate for AWS Keyspaces.
 

@@ -43,6 +43,12 @@ class AWSKeyspacesClient:
         self.aws_keyspace = os.environ.get("AWS_KEYSPACE")
         self.cassandra_host = os.environ.get("CASSANDRA_HOST")
         self.cassandra_port = os.environ.get("CASSANDRA_PORT")
+        # if AWS_ROLE_ARN, AWS_ROLE_SESSION_NAME and AWS_WEB_IDENTITY_TOKEN_FILE are set,
+        # we are using AWS STS to assume a role and get temporary credentials
+        # if they are not set, we are using AWS IAM user credentials (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
+        self.role_arn = os.environ.get("AWS_ROLE_ARN")
+        self.role_session_name = os.environ.get("AWS_ROLE_SESSION_NAME")
+        self.web_identity_token_file = os.environ.get("AWS_WEB_IDENTITY_TOKEN_FILE")
         self.aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID")
         self.aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
         self.aws_ssl_certificate_path = os.environ.get("SSL_CERTFILE")
@@ -59,12 +65,42 @@ class AWSKeyspacesClient:
         ssl_context.check_hostname = False
         return ssl_context
 
+    def _using_assumed_role(self):
+        return self.role_arn is not None and self.role_arn != ""
+
     def _create_auth_provider(self):
-        boto_session = boto3.Session(
-            aws_access_key_id=self.aws_access_key_id,
-            aws_secret_access_key=self.aws_secret_access_key,
-            region_name=self.aws_region,
-        )
+        if self._using_assumed_role():
+            if not self.web_identity_token_file:
+                raise ValueError(
+                    "AWS_WEB_IDENTITY_TOKEN_FILE environment variable is not set"
+                )
+            if not self.role_session_name:
+                raise ValueError(
+                    "AWS_ROLE_SESSION_NAME environment variable is not set"
+                )
+
+            with open(self.web_identity_token_file, "r") as file:
+                web_identity_token = file.read().strip()
+
+            sts_client = boto3.client("sts")
+            response = sts_client.assume_role_with_web_identity(
+                RoleArn=self.role_arn,
+                RoleSessionName=self.role_session_name,
+                WebIdentityToken=web_identity_token,
+            )
+            credentials = response["Credentials"]
+            boto_session = boto3.Session(
+                aws_access_key_id=credentials["AccessKeyId"],
+                aws_secret_access_key=credentials["SecretAccessKey"],
+                aws_session_token=credentials["SessionToken"],
+                region_name=self.aws_region,
+            )
+        else:
+            boto_session = boto3.Session(
+                aws_access_key_id=self.aws_access_key_id,
+                aws_secret_access_key=self.aws_secret_access_key,
+                region_name=self.aws_region,
+            )
         return SigV4AuthProvider(boto_session)
 
     def _create_cluster(self):
@@ -226,23 +262,6 @@ if __name__ == "__main__":
     client = AWSKeyspacesClient()
     try:
         client.connect()
-        print("All blocks:")
-        all_blocks = client.get_blocks()
-        print("Number of blocks:", len(all_blocks))
-        print()
-
-        print("Specific block:")
-        specific_block = client.get_blocks(
-            block_hash="YnmzigsYK5tiybax6LT9c2NyVxEPd6or5aqbQG5mZWnbMZrxGX"
-        )
-        print(specific_block[0].block_hash)
-        print()
-
-        print("Four blocks:")
-        four_blocks = client.get_blocks(limit=4)
-        for block in four_blocks:
-            print(block.block_hash)
-        print()
 
         print("All submissions:")
         submissions = client.get_submissions()
