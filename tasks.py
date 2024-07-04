@@ -121,6 +121,39 @@ def init_database(ctx, batch_end_epoch=None, mins_ago=None, override_empty=False
     cursor.close()
     conn.close()
 
+@task
+def create_ro_user(ctx):
+    db_host = os.environ.get("POSTGRES_HOST")
+    db_port = os.environ.get("POSTGRES_PORT")
+    db_name = os.environ.get("POSTGRES_DB")
+    db_user = os.environ.get("POSTGRES_USER")
+    db_password = os.environ.get("POSTGRES_PASSWORD")
+    db_ro_user = os.environ.get("POSTGRES_RO_USER")
+    db_ro_password = os.environ.get("POSTGRES_RO_PASSWORD")
+
+    conn = psycopg2.connect(
+        host=db_host, port=db_port, dbname=db_name, user=db_user, password=db_password
+    )
+    cursor = conn.cursor()
+
+    # Check if the user exists
+    user_exists = False
+    cursor.execute("SELECT 1 FROM pg_roles WHERE rolname=%s;", (db_ro_user,))
+    user_exists = cursor.fetchone() is not None
+
+    if not user_exists:
+        cursor.execute(sql.SQL("CREATE USER {} WITH PASSWORD %s;").format(sql.Identifier(db_ro_user)), (db_ro_password,))
+        cursor.execute(sql.SQL("GRANT CONNECT ON DATABASE {} TO {};").format(sql.Identifier(db_name),sql.Identifier(db_ro_user)))
+        cursor.execute(sql.SQL("GRANT USAGE ON SCHEMA public TO {};").format(sql.Identifier(db_ro_user)))
+        cursor.execute(sql.SQL("GRANT SELECT ON ALL TABLES IN SCHEMA public TO {};").format(sql.Identifier(db_ro_user)))
+        cursor.execute(sql.SQL("ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO {};").format(sql.Identifier(db_ro_user)))
+        print(f"User {db_ro_user} created")
+    else:
+        print(f"User {db_ro_user} already exists")
+
+    conn.commit()
+    cursor.close()
+    conn.close()
 
 @task
 def drop_database(ctx):
