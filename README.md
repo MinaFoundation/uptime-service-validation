@@ -87,6 +87,10 @@ Set these environment variables for the Postgres connection:
 - `POSTGRES_USER` - Username for PostgreSQL authentication.
 - `POSTGRES_PASSWORD` - Password for the specified PostgreSQL user.
 
+> **Optional**(Used with `invoke create-ro-user` task):
+- `POSTGRES_RO_USER` - Desired username for creating read only postgres user.
+- `POSTGRES_RO_PASSWORD` - Desired password for read only postgres user.
+
 Create a database and relevant tables before first-time program execution using Python `invoke` tasks:
 
 1. **Create database and tables**:
@@ -120,6 +124,13 @@ It is possible to drop database using:
 ```
 invoke drop-database
 ```
+
+A task to create a read only user that later can be used to connect to Delegation Program database with services such as `leaderboard`.
+
+```
+invoke create-ro-user
+```
+> **Note:** This task uses `POSTGRES_RO_USER` and `POSTGRES_RO_PASSWORD` env variables.
 
 ### AWS Keyspaces/Cassandra Configuration
 
